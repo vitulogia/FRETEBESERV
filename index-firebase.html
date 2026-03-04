@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Calculadora de Pallets & Lucro de Frete — v2.2 + Cloud Sync</title>
+  <meta name="description" content="Calculadora de pallets com lucro e frete, com sincronização em tempo real via Firebase." />
+  <link rel="preconnect" href="https://www.gstatic.com" crossorigin>
+  <style>
+    :root{ --bg:#f6f7f9; --card:#ffffff; --ink:#0f172a; --muted:#64748b; --line:#e5e7eb; --primary:#0f172a; --primary-ink:#ffffff; --accent:#10b981; --danger:#ef4444; --amber:#f59e0b; }
+    *{box-sizing:border-box} html,body{height:100%}
+    body{margin:0;font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,"Helvetica Neue",Arial,"Noto Sans",sans-serif;background:linear-gradient(#fff,var(--bg));color:var(--ink)}
+    .container{max-width:1200px;margin:0 auto;padding:20px}
+    h1{margin:0;font-size:22px} .sub{font-size:12px;color:var(--muted)}
+    .row{display:grid;grid-template-columns:1fr;gap:16px} @media(min-width:992px){.row{grid-template-columns:2fr 1fr}}
+    .card{background:var(--card);border:1px solid var(--line);border-radius:16px;box-shadow:0 1px 3px rgba(0,0,0,.04);} .card>.content{padding:16px}
+    .btn{border:0;border-radius:12px;padding:8px 12px;background:var(--primary);color:var(--primary-ink);cursor:pointer}
+    .btn.secondary{background:#f3f4f6;color:#111827} .btn.danger{background:#fee2e2;color:#b91c1c} .btn:disabled{opacity:.6;cursor:not-allowed}
+    .input,select{border:1px solid var(--line);border-radius:12px;padding:8px 10px;width:100%}
+    .grid{display:grid;gap:12px} .grid.cols-2{grid-template-columns:1fr 1fr} .grid.cols-4{grid-template-columns:repeat(4,1fr)}
+    .badge{font-size:11px;color:var(--muted)} .stats{display:grid;gap:12px;grid-template-columns:repeat(2,1fr)} @media(min-width:768px){.stats{grid-template-columns:repeat(4,1fr)}}
+    .stat{background:#fafafa;border:1px solid var(--line);border-radius:14px;padding:10px} .stat .lbl{font-size:11px;color:var(--muted)} .stat .val{font-weight:700}
+    .truck{position:relative;background:#0b1020;border-radius:24px;color:#fff;padding:16px;border:1px solid #0b1020;box-shadow:0 6px 24px rgba(2,6,23,.35)}
+    .truck .cab{position:absolute;left:50%;transform:translateX(-50%);top:-18px;width:160px;height:36px;background:#1f2937;border:1px solid #374151;border-bottom:none;border-top-left-radius:16px;border-top-right-radius:16px}
+    .truck .wheels{position:absolute;left:16px;right:16px;top:8px;display:flex;justify-content:space-between} .truck .wheel{width:24px;height:24px;border-radius:50%;background:#374151}
+    .slot{position:relative;aspect-ratio:1/1;border:2px dashed #4b5563;border-radius:12px;background:#111827;display:flex;align-items:center;justify-content:center;overflow:hidden}
+    .slot.filled{border-style:solid;border-color:#6ee7b7}
+    .slot .title{position:relative;z-index:2;background:rgba(255,255,255,.92);color:#111827;padding:2px 6px;border-radius:8px;font-size:11px;font-weight:700;max-width:95%;text-align:center}
+    .slot .tag{position:relative;z-index:2;margin-top:4px;color:#e5e7eb;font-size:10px} .slot .remove{position:absolute;right:6px;top:6px;background:rgba(255,255,255,.92);color:#111827;border:none;border-radius:8px;padding:2px;cursor:pointer}
+    .product{border-bottom:1px solid var(--line);} .product .row1{display:flex;gap:12px;align-items:center;padding:10px 0;cursor:pointer}
+    .product .swatch{width:28px;height:28px;border-radius:8px;border:1px solid var(--line)} .product .name{font-weight:700;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .muted{color:var(--muted);font-size:12px} .drag{margin-left:auto;background:#eef2ff;border-radius:8px;padding:4px 8px;font-size:11px;cursor:grab}
+    .product .body{padding:8px 0 12px;display:none} .product.open .body{display:block} .chev{font-size:12px;color:#6b7280;transition:transform .2s ease} .product.open .chev{transform:rotate(90deg)}
+    .good{color:#047857} .bad{color:#dc2626}
+    .header{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px} .hleft{display:flex;gap:12px;align-items:center}
+    .logo{width:40px;height:40px;border-radius:14px;background:#0f172a;color:#fff;display:flex;align-items:center;justify-content:center;box-shadow:0 8px 24px rgba(2,6,23,.25)}
+    dialog{border:none;border-radius:16px;box-shadow:0 24px 48px rgba(2,6,23,.35)} dialog::backdrop{background:rgba(0,0,0,.45)} .modal .footer{display:flex;justify-content:flex-end;gap:8px;margin-top:12px}
+    .msg{margin-top:8px;font-size:12px;padding:8px 10px;border-radius:12px;display:none} .msg.show{display:block} .msg.error{background:#fef2f2;color:#991b1b;border:1px solid #fee2e2} .msg.ok{background:#ecfdf5;color:#065f46;border:1px solid #d1fae5}
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <div class="hleft"><div class="logo">🚚</div><div><h1>Calculadora de Pallets & Lucro de Frete (Cloud)</h1><div class="sub">Sincronização em tempo real entre dispositivos (Firebase). Use o mesmo <b>Espaço</b> para compartilhar.</div></div></div>
+      <div class="hright"><button class="btn" id="btnNewVehicle">+ Novo veículo</button><button class="btn secondary" id="btnNewProduct">+ Novo produto</button></div>
+    </div>
+
+    <div class="card"><div class="content">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px"><div style="background:#f4f4f5;border-radius:12px;padding:6px 8px;color:#3f3f46;font-size:12px">☁️</div><div><div style="font-weight:700">Sincronização em tempo real</div><div class="sub">Informe um <b>Espaço de trabalho</b> (ex.: "time-vendas"), cole sua <b>config Firebase</b> e clique em <b>Conectar</b>.</div></div></div>
+      <div class="grid cols-4">
+        <label><div class="sub">Espaço</div><input class="input" id="wsId" placeholder="ex.: time-vendas"></label>
+        <label><div class="sub">Config Firebase (JSON)</div><input class="input" id="fbConfig" placeholder='{"apiKey":"...", "projectId":"...", ...}'></label>
+        <div style="display:flex;gap:8px;align-items:flex-end"><button class="btn" id="btnConnect">Conectar</button><button class="btn secondary" id="btnDisconnect">Desconectar</button></div>
+        <div><div class="sub">Status</div><div id="syncStatus" class="badge">Desconectado</div></div>
+      </div>
+    </div></div>
+
+    <div class="card"><div class="content">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px"><div style="background:#f4f4f5;border-radius:12px;padding:6px 8px;color:#3f3f46;font-size:12px">ℹ️</div><div><div style="font-weight:700">Parâmetros de cálculo</div><div class="sub">Imposto e frete são globais; a Taxa % ML é definida por produto.</div></div></div>
+      <div class="grid cols-4">
+        <label><div class="sub">Imposto (%)</div><input class="input" type="number" step="0.1" min="0" id="inpTaxPercent"/></label>
+        <label><div class="sub">Frete (R$)</div><input class="input" type="number" step="0.01" min="0" id="inpFreight"/></label>
+        <div style="display:flex;align-items:flex-end"><button class="btn secondary" id="btnReset">Restaurar padrões</button></div>
+      </div>
+    </div></div>
+
+    <div class="row" style="margin-top:16px">
+      <div>
+        <div class="card"><div class="content">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px"><div style="background:#f4f4f5;border-radius:12px;padding:6px 8px;color:#3f3f46;font-size:12px">🚚</div><div><div style="font-weight:700">Veículo de frete</div><div class="sub">Escolha um veículo, ajuste o limite de peso (se necessário) e arraste pallets para a silhueta.</div></div></div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;align-items:flex-end">
+            <select id="selVehicle" class="input" style="max-width:360px"></select>
+            <label style="min-width:220px"><div class="sub">Limite de peso deste veículo (kg) — 0 = sem limite</div><input id="vehMaxWeight" class="input" type="number" min="0" step="1" value="0" /></label>
+            <button class="btn secondary" id="btnQuickNewVehicle">+ Novo veículo</button>
+            <button class="btn secondary" id="btnClearLoad">↺ Limpar carga</button>
+            <button class="btn danger" id="btnDeleteVehicle">🗑 Excluir veículo</button>
+          </div>
+          <div id="truckWrap"></div>
+          <div id="truckMsg" class="msg"></div>
+          <div class="stats" style="margin-top:12px">
+            <div class="stat"><div class="lbl">Lucro total dos pallets</div><div class="val" id="statProfit">R$ 0,00</div></div>
+            <div class="stat"><div class="lbl">Peso total</div><div class="val" id="statWeight">0 kg • 0 t</div></div>
+            <div class="stat"><div class="lbl">Frete</div><div class="val" id="statFreight">R$ 0,00</div></div>
+            <div class="stat"><div class="lbl">Resultado final</div><div class="val" id="statFinal">R$ 0,00</div></div>
+          </div>
+        </div></div>
+      </div>
+      <div>
+        <div class="card"><div class="content">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px"><div style="background:#f4f4f5;border-radius:12px;padding:6px 8px;color:#3f3f46;font-size:12px">📦</div><div><div style="font-weight:700">Produtos</div><div class="sub">Lista de produtos. Clique para abrir o cartão e editar. Arraste o botão para adicionar 1 pallet ao veículo.</div></div></div>
+          <div id="products"></div>
+          <div style="margin-top:10px"><button class="btn secondary" id="btnNewProduct2">+ Adicionar produto</button></div>
+        </div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modais -->
+  <dialog id="dlgVehicle" class="modal"><div class="content" style="padding:16px 18px;min-width:360px"><div style="font-weight:700;margin-bottom:8px">Novo veículo</div><div class="grid">
+    <label><div class="sub">Nome do veículo</div><input id="vehName" class="input" placeholder="Ex.: Furgão, Carreta, etc."></label>
+    <label><div class="sub">Capacidade (nº de pallets)</div><input id="vehCap" class="input" type="number" min="1" step="1" value="2"></label>
+    <label><div class="sub">Limite de peso (kg) — 0 = sem limite</div><input id="vehLimit" class="input" type="number" min="0" step="1" value="0"></label>
+    <div class="badge">A grade é ajustada automaticamente (linhas × colunas).</div>
+  </div><div class="footer"><button class="btn secondary" data-close>Cancelar</button><button class="btn" id="vehAdd">Adicionar veículo</button></div></div></dialog>
+
+  <dialog id="dlgProduct" class="modal"><div class="content" style="padding:16px 18px;min-width:360px"><div style="font-weight:700;margin-bottom:8px">Novo produto</div>
+    <div class="grid cols-2">
+      <label class="col"><div class="sub">Nome</div><input id="prodName" class="input" placeholder="Ex.: Água Mineral 1,5L"></label>
+      <label><div class="sub">Preço de compra (R$)</div><input id="prodBuy" class="input" type="number" min="0" step="0.01"></label>
+      <label><div class="sub">Preço de venda (R$)</div><input id="prodSale" class="input" type="number" min="0" step="0.01"></label>
+      <label><div class="sub">Unidades por pallet</div><input id="prodUnits" class="input" type="number" min="1" step="1"></label>
+      <label><div class="sub">Peso unitário (kg)</div><input id="prodWeight" class="input" type="number" min="0" step="0.01"></label>
+      <label><div class="sub">Taxa % ML (por produto)</div><input id="prodMlPct" class="input" type="number" min="0" step="0.1" placeholder="14"></label>
+    </div>
+    <div class="footer"><button class="btn secondary" data-close>Cancelar</button><button class="btn" id="prodAdd">Adicionar produto</button></div>
+  </div></dialog>
+
+  <!-- App base (igual v2.2) -->
+  <script>
+    const $=(s,e=document)=>e.querySelector(s), $$=(s,e=document)=>Array.from(e.querySelectorAll(s));
+    const brl=v=>new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'}).format(Number.isFinite(v)?v:0);
+    const kgFmt=v=>`${(v||0).toLocaleString('pt-BR',{maximumFractionDigits:2})} kg`; const tonFmt=v=>`${(v||0).toLocaleString('pt-BR',{maximumFractionDigits:3})} t`;
+    const toNum=x=>{ if(typeof x==='number')return x; if(!x)return 0; return parseFloat(String(x).replace(',','.'))||0 }; const clamp=(n,min=0)=>isNaN(n)?min:Math.max(min,n);
+    function uid(p='id'){return p+'_'+Math.random().toString(36).slice(2,9)}
+    function bestGrid(cap){ if(cap<=0)return{rows:1,cols:1}; let best={rows:1,cols:cap},bd=cap-1; for(let r=1;r<=Math.sqrt(cap);r++){ if(cap%r===0){ const c=Math.ceil(cap/r),d=Math.abs(c-r); if(d<bd){best={rows:r,cols:c};bd=d} } } if(best.rows*best.cols!==cap){ const rows=Math.floor(Math.sqrt(cap)), cols=Math.ceil(cap/rows); best={rows,cols} } return best }
+    function fixedML(sale){ const s=toNum(sale); if(s>198.99)return 0; if(s>99.99)return 6; if(s>49.99)return 4; if(s>29.99)return 2; if(s>7.99)return 1; return 0 }
+    function computeProduct(p,taxPercent){ const mlPercent=clamp(toNum(p.mlPercent)); const sale=clamp(toNum(p.salePrice)); const buy=clamp(toNum(p.buyPrice)); const fixed=fixedML(sale); const mlPctVal=sale*mlPercent/100; const taxVal=sale*clamp(toNum(taxPercent))/100; const profitUnit=sale-buy-fixed-mlPctVal-taxVal; const profitPallet=profitUnit*clamp(toNum(p.unitsPerPallet),1); const palletWeightKg=clamp(toNum(p.unitWeightKg))*clamp(toNum(p.unitsPerPallet),1); return {sale,buy,fixed,mlPctVal,taxVal,profitUnit,profitPallet,palletWeightKg,mlPercent} }
+
+    const store={ get(k,f){try{const v=JSON.parse(localStorage.getItem(k));return (v===null||v===undefined)?f:v}catch(e){return f}}, set(k,v){localStorage.setItem(k,JSON.stringify(v))} };
+    let state={ mlPercent:store.get('mcalc_ml_percent',14), taxPercent:store.get('mcalc_tax_percent',10), freight:store.get('mcalc_freight',0), products:store.get('mcalc_products',[{id:uid('prod'),name:'Suco Laranja Natural One 1,7L',buyPrice:11.79,salePrice:19.90,unitsPerPallet:540,unitWeightKg:1.75,colorIdx:0,mlPercent:14}]), vehicles:store.get('mcalc_vehicles',(()=>{const v1c=2,v2c=6,v3c=8;const g1=bestGrid(v1c),g2=bestGrid(v2c),g3=bestGrid(v3c);return[{id:uid('veh'),name:'Ranger',capacity:v1c,rows:g1.rows,cols:g1.cols,createdAt:Date.now(),maxWeightKg:0},{id:uid('veh'),name:'Caminhão 6 pallets',capacity:v2c,rows:g2.rows,cols:g2.cols,createdAt:Date.now(),maxWeightKg:0},{id:uid('veh'),name:'Caminhão 8 pallets',capacity:v3c,rows:g3.rows,cols:g3.cols,createdAt:Date.now(),maxWeightKg:0}]})()), layouts:store.get('mcalc_layouts',{}), selectedVehicleId:store.get('mcalc_selected_vehicle',null), expanded:{} };
+    state.products.forEach(p=>{ if(p.mlPercent===undefined)p.mlPercent=state.mlPercent||14 }); state.vehicles.forEach(v=>{ if(v.maxWeightKg===undefined)v.maxWeightKg=0 });
+
+    function persist(){ store.set('mcalc_tax_percent',state.taxPercent); store.set('mcalc_freight',state.freight); store.set('mcalc_products',state.products); store.set('mcalc_vehicles',state.vehicles); store.set('mcalc_layouts',state.layouts); store.set('mcalc_selected_vehicle',state.selectedVehicleId); cloudScheduleSave(); }
+
+    const selVehicle=$('#selVehicle'), vehMaxWeight=$('#vehMaxWeight'), truckWrap=$('#truckWrap'), truckMsg=$('#truckMsg'), productsEl=$('#products');
+    const inpTaxPercent=$('#inpTaxPercent'), inpFreight=$('#inpFreight'); const statProfit=$('#statProfit'), statWeight=$('#statWeight'), statFreight=$('#statFreight'), statFinal=$('#statFinal');
+    const productRows={};
+
+    function initControls(){
+      inpTaxPercent.value=state.taxPercent; inpFreight.value=state.freight;
+      inpTaxPercent.addEventListener('input',()=>{ state.taxPercent=toNum(inpTaxPercent.value); persist(); renderTotals(); Object.values(productRows).forEach(row=>{ const id=row.dataset.id; const p=state.products.find(x=>x.id===id); if(p) updateProductUI(p) }) });
+      inpFreight.addEventListener('input',()=>{ state.freight=toNum(inpFreight.value); persist(); renderTotals(); });
+      $('#btnReset').addEventListener('click',()=>{ state.taxPercent=10; state.freight=0; inpTaxPercent.value=state.taxPercent; inpFreight.value=state.freight; persist(); renderTotals(); Object.values(productRows).forEach(row=>{ const id=row.dataset.id; const p=state.products.find(x=>x.id===id); if(p) updateProductUI(p) }) });
+      $('#btnClearLoad').addEventListener('click',()=>{ const v=getSelectedVehicle(); if(!v)return; ensureLayout(v); state.layouts[v.id]=Array(v.capacity).fill(null); persist(); renderTruck(); renderTotals(); });
+      $('#btnDeleteVehicle').addEventListener('click',()=>{ const v=getSelectedVehicle(); if(!v)return; state.vehicles=state.vehicles.filter(x=>x.id!==v.id); delete state.layouts[v.id]; state.selectedVehicleId=(state.vehicles[0]&&state.vehicles[0].id)||null; persist(); renderVehicles(); renderTruck(); renderTotals(); });
+      const openVeh=()=>$('#dlgVehicle').showModal(); $('#btnNewVehicle').addEventListener('click',openVeh); $('#btnQuickNewVehicle').addEventListener('click',openVeh); $('#btnNewProduct').addEventListener('click',()=>$('#dlgProduct').showModal()); $('#btnNewProduct2').addEventListener('click',()=>$('#dlgProduct').showModal());
+      $$('#dlgVehicle [data-close]').forEach(b=>b.addEventListener('click',()=>$('#dlgVehicle').close())); $$('#dlgProduct [data-close]').forEach(b=>b.addEventListener('click',()=>$('#dlgProduct').close()));
+      $('#vehAdd').addEventListener('click',()=>{ const name=$('#vehName').value.trim()||undefined; const cap=Math.max(1,Math.floor(toNum($('#vehCap').value)||1)); const limit=Math.max(0,Math.floor(toNum($('#vehLimit').value)||0)); const grid=bestGrid(cap); const veh={id:uid('veh'),name:name||`Veículo (${cap} pallets)`,capacity:cap,rows:grid.rows,cols:grid.cols,createdAt:Date.now(),maxWeightKg:limit}; state.vehicles.push(veh); state.selectedVehicleId=veh.id; ensureLayout(veh); $('#vehName').value=''; $('#vehCap').value='2'; $('#vehLimit').value='0'; persist(); renderVehicles(); renderTruck(); renderTotals(); $('#dlgVehicle').close(); });
+      $('#prodAdd').addEventListener('click',()=>{ const prod={ id:uid('prod'), name:$('#prodName').value.trim()||'Produto novo', buyPrice:toNum($('#prodBuy').value), salePrice:toNum($('#prodSale').value), unitsPerPallet:Math.max(1,Math.floor(toNum($('#prodUnits').value)||1)), unitWeightKg:toNum($('#prodWeight').value), colorIdx:Math.floor(Math.random()*6), mlPercent:toNum($('#prodMlPct').value)||14 }; state.products.push(prod); $('#prodName').value=''; $('#prodBuy').value=''; $('#prodSale').value=''; $('#prodUnits').value=''; $('#prodWeight').value=''; $('#prodMlPct').value=''; persist(); renderProducts(); renderTotals(); $('#dlgProduct').close(); });
+    }
+
+    function ensureLayout(v){ if(!state.layouts[v.id] || state.layouts[v.id].length!==v.capacity){ state.layouts[v.id]=Array(v.capacity).fill(null) } }
+    function getSelectedVehicle(){ let v=state.vehicles.find(x=>x.id===state.selectedVehicleId)||state.vehicles[0]; if(!v && state.vehicles.length){ v=state.vehicles[0]; state.selectedVehicleId=v.id } return v||null }
+    function vehicleTotals(v){ ensureLayout(v); const layout=state.layouts[v.id]; let totalProfit=0,totalWeight=0; layout.forEach(pid=>{ if(!pid)return; const p=state.products.find(x=>x.id===pid); if(!p)return; const calc=computeProduct(p,state.taxPercent); totalProfit+=calc.profitPallet; totalWeight+=calc.palletWeightKg; }); return {totalProfit,totalWeight} }
+
+    function renderVehicles(){ selVehicle.innerHTML=''; state.vehicles.forEach(v=>{ const o=document.createElement('option'); o.value=v.id; o.textContent=`${v.name} — ${v.capacity} pallets`; selVehicle.appendChild(o) }); if(state.vehicles.length){ const ok=state.vehicles.some(v=>v.id===state.selectedVehicleId); if(!ok) state.selectedVehicleId=state.vehicles[0].id; selVehicle.value=state.selectedVehicleId } selVehicle.onchange=()=>{ state.selectedVehicleId=selVehicle.value; persist(); renderTruck(); renderTotals(); syncVehLimitInput(); }; syncVehLimitInput(); }
+    function syncVehLimitInput(){ const v=getSelectedVehicle(); if(!v){ vehMaxWeight.value=0; return } vehMaxWeight.value=v.maxWeightKg||0; vehMaxWeight.oninput=()=>{ v.maxWeightKg=Math.max(0,Math.floor(toNum(vehMaxWeight.value)||0)); persist(); renderTotals(); } }
+    function showMsg(txt,type='error'){ truckMsg.textContent=txt; truckMsg.className='msg show '+(type==='error'?'error':'ok'); clearTimeout(showMsg._t); showMsg._t=setTimeout(()=>{truckMsg.className='msg'},2400) }
+
+    function renderTruck(){ const v=getSelectedVehicle(); if(!v){ truckWrap.innerHTML='<div class="badge">Nenhum veículo cadastrado.</div>'; return } ensureLayout(v); const layout=state.layouts[v.id]; const gridStyle=`display:grid;gap:8px;grid-template-columns:repeat(${v.cols},minmax(0,1fr));`; let slots=''; for(let i=0;i<layout.length;i++){ const pid=layout[i]; const prod=state.products.find(p=>p.id===pid); const filled=!!prod; const pat=`pat-${prod?(prod.colorIdx%6):0}`; const bg=filled?`<div class="${pat}" style="position:absolute;inset:0;opacity:.8"></div>`:''; const inner=filled?`<div class="title">${prod.name}</div><div class="tag">1 pallet</div><button class="remove" title="Remover" data-remove="${i}">✖</button>`:`<div class="badge" style="color:#94a3b8">Arraste um produto</div>`; slots+=`<div class="slot ${filled?'filled':''}" data-slot="${i}" draggable="false">${bg}<div style="position:relative;z-index:2;text-align:center">${inner}</div></div>` }
+      truckWrap.innerHTML=`<div class="truck"><div class="cab"></div><div class="wheels"><div class="wheel"></div><div class="wheel"></div></div><div class="badge" style="color:#cbd5e1;margin-bottom:6px">Capacidade: ${v.capacity} pallets • Grade: ${v.rows}×${v.cols}${v.maxWeightKg>0?` • Limite: ${kgFmt(v.maxWeightKg)}`:''}</div><div style="${gridStyle}">${slots}</div></div>`;
+      $$('.slot',truckWrap).forEach(el=>{ el.addEventListener('dragover',e=>e.preventDefault()); el.addEventListener('drop',e=>{ e.preventDefault(); const pid=e.dataTransfer.getData('text/productId'); const idx=Number(el.dataset.slot); if(!pid)return; const p=state.products.find(x=>x.id===pid); const calc=computeProduct(p,state.taxPercent); const {totalWeight}=vehicleTotals(v); const next=totalWeight+calc.palletWeightKg; if(v.maxWeightKg>0 && next>v.maxWeightKg){ showMsg('Não é possível adicionar: limite de peso do veículo seria excedido.','error'); return } layout[idx]=pid; persist(); renderTruck(); renderTotals(); }) });
+      $$('button[data-remove]',truckWrap).forEach(btn=>btn.addEventListener('click',()=>{ const idx=Number(btn.getAttribute('data-remove')); layout[idx]=null; persist(); renderTruck(); renderTotals(); }))
+    }
+
+    function renderProducts(){ productsEl.innerHTML=''; for(const k in productRows) delete productRows[k]; if(!Array.isArray(state.products)) state.products=[]; state.products.forEach(p=>{ const calc=computeProduct(p,state.taxPercent); const row=document.createElement('div'); row.className='product'+(state.expanded[p.id]?' open':''); row.dataset.id=p.id; row.innerHTML=`
+      <div class="row1" data-toggle>
+        <div class="swatch pat-${p.colorIdx%6}"></div>
+        <div style="flex:1;min-width:0">
+          <div class="name" title="${p.name}">${p.name}</div>
+          <div class="muted" data-f="head">Lucro un.: <span data-f="head-unit" class="${calc.profitUnit>=0?'good':'bad'}">${brl(calc.profitUnit)}</span> • Pallet: <span data-f="head-pallet" class="${calc.profitPallet>=0?'good':'bad'}">${brl(calc.profitPallet)}</span></div>
+        </div>
+        <button class="drag" draggable="true" title="Arraste para a silhueta">Arrastar</button>
+        <span class="chev">▶</span>
+      </div>
+      <div class="body">
+        <div class="grid cols-2">
+          <label><div class="sub">Preço de compra (R$)</div><input class="input" type="number" step="0.01" min="0" data-edit="buy" value="${p.buyPrice}"></label>
+          <label><div class="sub">Preço de venda (R$)</div><input class="input" type="number" step="0.01" min="0" data-edit="sale" value="${p.salePrice}"></label>
+          <label><div class="sub">Unidades / pallet</div><input class="input" type="number" step="1" min="1" data-edit="units" value="${p.unitsPerPallet}"></label>
+          <label><div class="sub">Peso unitário (kg)</div><input class="input" type="number" step="0.01" min="0" data-edit="weight" value="${p.unitWeightKg}"></label>
+          <label><div class="sub">Taxa % ML (este produto)</div><input class="input" type="number" step="0.1" min="0" data-edit="mlpct" value="${p.mlPercent}"></label>
+        </div>
+        <div class="grid cols-2" style="margin-top:8px">
+          <div class="stat"><div class="lbl">Compra</div><div class="val" data-f="buy">${brl(calc.buy)}</div></div>
+          <div class="stat"><div class="lbl">Venda</div><div class="val" data-f="sale">${brl(calc.sale)}</div></div>
+          <div class="stat"><div class="lbl">Taxa Fixa ML</div><div class="val" data-f="fixed">${brl(calc.fixed)}</div></div>
+          <div class="stat"><div class="lbl">Taxa % ML (<span data-f="mlpct">${calc.mlPercent}</span>%)</div><div class="val" data-f="mlpctval">${brl(calc.mlPctVal)}</div></div>
+          <div class="stat"><div class="lbl">Imposto (<span data-f="tax">${state.taxPercent}</span>%)</div><div class="val" data-f="taxval">${brl(calc.taxVal)}</div></div>
+          <div class="stat"><div class="lbl">Peso/pallet</div><div class="val" data-f="weight">${kgFmt(calc.palletWeightKg)}</div></div>
+        </div>
+        <div class="grid" style="margin-top:8px">
+          <div class="stat" style="background:#ecfdf5;border-color:#d1fae5"><div class="lbl" style="color:#047857">Lucro por unidade</div><div class="val" style="color:#047857" data-f="profit-unit">${brl(calc.profitUnit)}</div></div>
+          <div class="stat" style="background:#ecfdf5;border-color:#d1fae5"><div class="lbl" style="color:#047857">Lucro por pallet</div><div class="val" style="color:#047857" data-f="profit-pallet">${brl(calc.profitPallet)}</div></div>
+        </div>
+        <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:8px"><button class="btn danger" title="Excluir">🗑 Excluir produto</button></div>
+      </div>`;
+      productRows[p.id]=row;
+      row.querySelector('[data-toggle]').addEventListener('click',e=>{ if(e.target && e.target.classList && e.target.classList.contains('drag')) return; state.expanded[p.id]=!state.expanded[p.id]; row.classList.toggle('open') });
+      const delBtn=row.querySelector('button[title="Excluir"]'); if(delBtn) delBtn.addEventListener('click',()=>{ state.products=state.products.filter(x=>x.id!==p.id); Object.keys(state.layouts).forEach(vid=>{ state.layouts[vid]=(state.layouts[vid]||[]).map(x=>x===p.id?null:x) }); persist(); renderProducts(); renderTotals(); });
+      row.querySelector('.drag').addEventListener('dragstart',e=>{ e.dataTransfer.setData('text/productId',p.id) });
+      row.querySelector('[data-edit="buy"]').addEventListener('input',e=>{ p.buyPrice=toNum(e.target.value); persist(); updateProductUI(p); renderTotals(); });
+      row.querySelector('[data-edit="sale"]').addEventListener('input',e=>{ p.salePrice=toNum(e.target.value); persist(); updateProductUI(p); renderTotals(); });
+      row.querySelector('[data-edit="units"]').addEventListener('input',e=>{ p.unitsPerPallet=Math.max(1,Math.floor(toNum(e.target.value)||1)); persist(); updateProductUI(p); renderTotals(); });
+      row.querySelector('[data-edit="weight"]').addEventListener('input',e=>{ p.unitWeightKg=toNum(e.target.value); persist(); updateProductUI(p); renderTotals(); });
+      row.querySelector('[data-edit="mlpct"]').addEventListener('input',e=>{ p.mlPercent=toNum(e.target.value); persist(); updateProductUI(p); renderTotals(); });
+      productsEl.appendChild(row);
+    }); if(state.products.length===0){ const empty=document.createElement('div'); empty.className='badge'; empty.textContent='Nenhum produto cadastrado. Clique em “+ Adicionar produto”.'; productsEl.appendChild(empty) } }
+
+    function updateProductUI(p){ const row=productRows[p.id]; if(!row) return; const calc=computeProduct(p,state.taxPercent); const setText=(sel,txt)=>{ const el=row.querySelector(`[data-f="${sel}"]`); if(el) el.textContent=txt };
+      const headUnit=row.querySelector('[data-f="head-unit"]'); const headPallet=row.querySelector('[data-f="head-pallet"]'); if(headUnit){ headUnit.textContent=brl(calc.profitUnit); headUnit.className=(calc.profitUnit>=0?'good':'bad') } if(headPallet){ headPallet.textContent=brl(calc.profitPallet); headPallet.className=(calc.profitPallet>=0?'good':'bad') }
+      setText('buy',brl(calc.buy)); setText('sale',brl(calc.sale)); setText('fixed',brl(calc.fixed)); setText('mlpct',String(calc.mlPercent)); setText('mlpctval',brl(calc.mlPctVal)); const taxSpan=row.querySelector('[data-f="tax"]'); if(taxSpan) taxSpan.textContent=String(state.taxPercent); setText('taxval',brl(calc.taxVal)); setText('weight',kgFmt(calc.palletWeightKg)); setText('profit-unit',brl(calc.profitUnit)); setText('profit-pallet',brl(calc.profitPallet)); }
+
+    function renderTotals(){ const v=getSelectedVehicle(); if(!v){ statProfit.textContent=brl(0); statWeight.textContent=`${kgFmt(0)} • ${tonFmt(0)}`; statFreight.textContent=brl(state.freight); statFinal.textContent=brl(0); return } const {totalProfit,totalWeight}=vehicleTotals(v); const limit=toNum(v.maxWeightKg)||0; const exceeded=limit>0 && totalWeight>limit; statProfit.textContent=brl(totalProfit); statWeight.textContent=limit>0?`${kgFmt(totalWeight)} de ${kgFmt(limit)} • ${tonFmt(totalWeight/1000)}`:`${kgFmt(totalWeight)} • ${tonFmt(totalWeight/1000)}`; statWeight.style.color=exceeded?'#dc2626':''; statFreight.textContent=brl(state.freight); const final=totalProfit-clamp(toNum(state.freight)); statFinal.textContent=brl(final); statFinal.style.color=final>=0?'#047857':'#dc2626'; if(exceeded){ showMsg('Peso total excede o limite deste veículo. Considere remover pallets ou aumentar o limite.','error') } }
+
+    function render(){ renderVehicles(); renderTruck(); renderProducts(); renderTotals(); }
+  </script>
+
+  <!-- Firebase SDKs (carregadas via CDN) -->
+  <script type="module">
+    import { initializeApp, deleteApp, getApps } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js';
+    import { getFirestore, doc, setDoc, onSnapshot } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js';
+
+    let app = null, db = null, unsub = null, wsRef = null, isApplyingRemote = false, saveT = null, lastRemoteStamp = 0;
+
+    const $ = (s,e=document)=>e.querySelector(s);
+    const syncStatus = $('#syncStatus');
+    const wsIdEl = $('#wsId');
+    const fbConfigEl = $('#fbConfig');
+    const btnConnect = $('#btnConnect');
+    const btnDisconnect = $('#btnDisconnect');
+
+    function setStatus(txt){ syncStatus.textContent = txt; }
+
+    async function connect(){
+      const wsId = (wsIdEl.value||'').trim();
+      if(!wsId){ alert('Informe um Espaço de trabalho.'); return }
+      let cfg; try{ cfg = JSON.parse(fbConfigEl.value||'{}'); }catch(e){ alert('Config Firebase inválida (JSON).'); return }
+      if(!cfg || !cfg.apiKey || !cfg.projectId){ alert('Preencha a config Firebase completa (apiKey, projectId, authDomain, appId, etc).'); return }
+
+      try{
+        if(getApps().length){ app = getApps()[0]; } else { app = initializeApp(cfg); }
+        db = getFirestore(app);
+        wsRef = doc(db, 'workspaces', wsId);
+        subscribe();
+        setStatus('Conectado ao espaço: '+wsId);
+      }catch(e){ console.error(e); alert('Erro ao conectar ao Firebase: '+e.message); setStatus('Falha na conexão'); }
+    }
+
+    function disconnect(){ try{ if(unsub) unsub(); unsub=null; }catch{} try{ if(app) deleteApp(app); }catch{} app=null; db=null; wsRef=null; setStatus('Desconectado'); }
+
+    function localSnapshot(){
+      // Coleta apenas o necessário para sincronizar
+      return {
+        taxPercent: state.taxPercent,
+        freight: state.freight,
+        products: state.products,
+        vehicles: state.vehicles,
+        layouts: state.layouts,
+        selectedVehicleId: state.selectedVehicleId,
+        expanded: state.expanded || {},
+      };
+    }
+
+    async function cloudSaveNow(){
+      if(!wsRef) return;
+      try{
+        const payload = localSnapshot();
+        payload.updatedAt = Date.now();
+        await setDoc(wsRef, payload, { merge: true });
+      }catch(e){ console.warn('Falha ao salvar na nuvem:', e?.message); }
+    }
+
+    function cloudScheduleSave(){
+      if(!wsRef) return; // offline
+      if(isApplyingRemote) return; // não salvar eco
+      clearTimeout(saveT);
+      saveT = setTimeout(cloudSaveNow, 400); // debounce
+    }
+
+    function applyRemote(data){
+      isApplyingRemote = true;
+      try{
+        // Evita aplicar uma versão mais antiga
+        if((data.updatedAt||0) <= lastRemoteStamp) return;
+        lastRemoteStamp = data.updatedAt||Date.now();
+        state.taxPercent = data.taxPercent ?? state.taxPercent;
+        state.freight = data.freight ?? state.freight;
+        state.products = Array.isArray(data.products) ? data.products : state.products;
+        state.vehicles = Array.isArray(data.vehicles) ? data.vehicles : state.vehicles;
+        state.layouts = data.layouts || state.layouts;
+        state.selectedVehicleId = data.selectedVehicleId ?? state.selectedVehicleId;
+        state.expanded = data.expanded || {};
+        persist(); // grava no localStorage também
+        // Re-renderiza a UI completa após aplicar
+        render();
+      } finally {
+        isApplyingRemote = false;
+      }
+    }
+
+    function subscribe(){
+      if(unsub) unsub();
+      unsub = onSnapshot(wsRef, (snap)=>{
+        if(!snap.exists()){
+          // Primeira gravação: cria doc a partir do estado atual
+          cloudSaveNow();
+          return;
+        }
+        const data = snap.data()||{};
+        applyRemote(data);
+        setStatus('Conectado ✓');
+      }, (err)=>{ console.error(err); setStatus('Erro de sincronização'); });
+    }
+
+    // Exponho cloudScheduleSave para o escopo do app base
+    window.cloudScheduleSave = cloudScheduleSave;
+
+    // Ligações de UI
+    btnConnect.addEventListener('click', connect);
+    btnDisconnect.addEventListener('click', disconnect);
+
+    // Se já existir config/espaco em localStorage, tenta reconectar (conveniência)
+    const savedWs = localStorage.getItem('mcalc_ws_id');
+    const savedCfg = localStorage.getItem('mcalc_fb_cfg');
+    if(savedWs && savedCfg){ wsIdEl.value = JSON.parse(savedWs); fbConfigEl.value = savedCfg; }
+    wsIdEl.addEventListener('input', ()=> localStorage.setItem('mcalc_ws_id', JSON.stringify(wsIdEl.value||'')));
+    fbConfigEl.addEventListener('input', ()=> localStorage.setItem('mcalc_fb_cfg', fbConfigEl.value||''));
+  </script>
+</body>
+</html>
